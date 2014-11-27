@@ -1,0 +1,69 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+start_test_msg: .asciz "\r\nStarting Tests\r\n"
+pass_msg: 	.asciz "Passed"
+fail_msg: 	.asciz "Failed"
+test_ram_msg:  	.asciz "\r\nTesting Ram "
+
+test_code:
+	ld arg1, #start_test_msg
+	call mesg_serial
+	
+	ld arg1, #test_ram_msg
+	call mesg_serial
+	ld ax, #RAM_START
+	ldb bl, #$AA
+	test_ram_loop_a:
+		stb bl, [ax]+
+		cmp ax, #RAM_LAST
+		jne test_ram_loop_a
+	ld ax, #RAM_START
+	test_ram_loop_b:
+		cmpb bl, [ax]+
+		jne test_ram_fail
+		cmp ax, #RAM_LAST
+		jne test_ram_loop_b
+	ld ax, #RAM_START
+	ldb bl, #$55
+	test_ram_loop_c:
+		stb bl, [ax]+
+		cmp ax, #RAM_LAST
+		jne test_ram_loop_c
+	ld ax, #RAM_START
+	test_ram_loop_d:
+		cmpb bl, [ax]+
+		jne test_ram_fail
+		cmp ax, #RAM_LAST
+		jne test_ram_loop_d
+	ld arg1, #pass_msg
+	call mesg_serial
+	jmp test_ram_done
+	test_ram_fail:
+		ld arg1,#fail_msg
+		call mesg_serial
+		ld arg1, ax		; display fail address
+		call word_serial
+	test_ram_done:
+		jmp sw_end
+
+
+
+word_loopback:
+	ldb arg1,#$5A
+	call byte_serial
+	ld arg1,#$BEAF
+	call word_serial
+	call read_word
+	ld arg1,retval
+	call word_serial
+	jmp sw_end
+
+string_loopback:
+	ld arg1,#RAM_START
+	ldb arg2,#32
+	call read_string
+	call mesg_serial	; ptr already in arg1
+	jmp sw_end

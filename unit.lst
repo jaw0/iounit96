@@ -1,0 +1,1005 @@
+IO-Unit Code; -jaw
+
+ 0000           titl "IO-Unit Code; -jaw"
+                	;Sun Sep 13 14:24:42 EDT 1992
+                
+                
+ 0000           CPU		"8096.tbl"
+ 0000           hof		"bin8"
+ 0000 0000000000dfb		0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+                			; HELLO, McFly!?!?!?  (c16 assembler kludge)
+                
+ 0016           incl "defines.i96"	;
+                
+                
+ 0008 =         MHz:		equ 8		; CPU speed
+ 01F4 =         int_time:	equ 500		; usec per timer int
+ 003C =         wait_secs:	equ 60		; sec before abort in chinput
+ CB2F =         pi:		equ 314159	; pi * 100000
+ 0018 =         timer_command:	equ 00011000b	; hso start timer command
+                
+ 00A6 =         timer_num:	equ {MHz*int_time}/{3*8}	; value for timer count
+                			; 8095 is 3 osc / state time (196 is 2)
+ FF5A =         timer_count:	equ -timer_num	
+ 01D4 =         wait_max:	equ { wait_secs*1000000/{int_time*256} }
+ 1234 =         RST_WARM:	equ $1234	; warm reset flag
+                
+                
+                ; define adresses of devices
+                
+ 1000 =         PPI_A0:		equ $1000
+ 1001 =         PPI_A1:		equ $1001
+ 1002 =         PPI_A2:		equ $1002
+ 1003 =         PPI_AC:		equ $1003
+                
+ 1100 =         PPI_B0:		equ $1100
+ 1101 =         PPI_B1:		equ $1101
+ 1102 =         PPI_B2:		equ $1102
+ 1103 =         PPI_BC:		equ $1103
+                
+ 1200 =         PIT_A0:		equ $1200
+ 1201 =         PIT_A1:		equ $1201
+ 1202 =         PIT_A2:		equ $1202
+ 1203 =         PIT_AC:		equ $1203
+                
+                ;		equ $1300	; future expansion
+                ;		equ $1400	; ditto
+                
+ 1500 =         DAC_A0:		equ $1500
+                ;		equ $1600	; fut. exp. (ADC)
+ 1700 =         LCD_A0:		equ $1700
+                
+ 001A =         REG_START:	equ $001A
+ 00FF =         REG_LAST:	equ $00FF
+ 2000 =         ROM_START:	equ $2000
+ 3FFF =         ROM_LAST:	equ $3FFF
+ E000 =         RAM_START:	equ $E000
+ FFFF =         RAM_LAST:	equ $FFFF
+                
+                
+                	; define various bits
+ 0006 =         ri_bit:		equ	6
+ 0005 =         ti_bit:		equ	5
+ 0003 =         adc_go:		equ 	3
+ 0005 =         sel_txd:	equ 	5
+ 0000 =         sel_pwm:	equ 	0
+ 0006 =         int_sio:	equ	6
+ 0001 =         int_adc:	equ	1
+ 0005 =         int_timer:	equ	5
+ 0007 =         int_extint:	equ	7
+ 0002 =         int_hsi:	equ	2
+ 0003 =         int_hso:	equ	3
+ 0000 =         cflg_gotit:	equ 	0
+ 0001 =         cflg_ov:	equ	1
+                
+                	; ascii cntl chars
+ 0000 =         nul:		equ 0
+ 0000 =         null:		equ 0
+ 0004 =         eot:		equ 4
+ 0005 =         enq:		equ 5
+ 0006 =         ack:		equ 6
+ 0007 =         bel:		equ 7
+ 000A =         nl:		equ $A
+ 000D =         cr:		equ $D
+ 001B =         esc:		equ $1B
+                
+                
+ 0016           incl "register.i96"	;
+                
+                
+ 0000 =         r0:		equ	00h		; r/w zero register
+ 0002 =         ad_result:	equ	02h		; r   a/d result register
+ 0002 =         ad_command:	equ	02h		;   w to a/d command register
+ 0003 =         hsi_mode:	equ	03h		;   w controls hsi transition
+ 0004 =         hsi_time:	equ	04h		; r   hsi time tag
+ 0004 =         hso_time:	equ	04h		;   w hso time tag
+ 0006 =         hso_command:	equ	06h		;   w hso command tag
+ 0006 =         hsi_status:	equ	06h		; r   hsi fifo
+ 0007 =         sbuf:		equ	07h		; r/w serial i/o buffer
+ 0008 =         int_mask:	equ	08h		; r/w interrupt	mask
+ 0009 =         int_pending:	equ	09h		; r/w interrupt	pending	register
+ 000A =         watchdog:	equ	0ah		;   w watchdog timer
+ 000A =         timer1:		equ	0ah		; r   timer 1  register
+ 000C =         timer2:		equ	0ch		; r   timer 2 register
+ 000E =         baud_rate:	equ	0eh		;   w baud rate	register
+ 000E =         ioport0:	equ	0eh		; r   i/o port 0
+ 000F =         ioport1:	equ	0fh		; r/w i/o port 1
+ 0010 =         ioport2:	equ	10h		; r/w i/o port 2
+ 0011 =         sp_stat:	equ	11h		; r   serial port status register
+ 0011 =         sp_con:		equ	11h		;   w serial port control register
+ 0015 =         ios0:		equ	15h		; r   i/o register status 0
+ 0015 =         ioc0:		equ	15h		;   w i/o control register 0
+ 0016 =         ios1:		equ	16h		; r   i/o register status 1
+ 0016 =         ioc1:		equ	16h		;   w i/o control register 1
+ 0017 =         pwm_control:	equ	17h		;   w pwm value register
+ 0018 =         sp:		equ	18h		; r/w stack pointer
+                
+                	; some short hand notations for	the above
+ 0009 =         ipend:		equ	09h
+ 0008 =         imask:		equ	08h
+ 000E =         port0:		equ	0eh
+ 000F =         port1:		equ	0fh
+ 0010 =         port2:		equ	10h
+                
+                
+ 001A           org $1a		; the registers we will be using
+                
+ 001A           ax:		dfs 2	; general purpose registers
+ 001C           bx:		dfs 2
+ 001E           cx:		dfs 2
+ 0020           dx:		dfs 2
+ 0022           ex:		dfs 2
+ 0024           si:		dfs 2
+                ; di is reserved (disable ints)
+                
+ 001A =         al:		equ ax	; shorthand notation
+ 001B =         ah:		equ al + 1
+ 001C =         bl:		equ bx
+ 001D =         bh:		equ bl + 1
+ 001E =         cl:		equ cx
+ 001F =         ch:		equ cl + 1
+ 0020 =         dl:		equ dx
+ 0021 =         dh:		equ dl + 1
+ 001A =         foo:		equ ax
+ 001C =         bar:		equ bx
+ 001E =         baz:		equ cx
+ 0020 =         fee:		equ dx
+ 0022 =         fie:		equ ex
+ 0024 =         foe:		equ si
+                
+                
+ 0026           arg1:		dfs 2	; input args to functions
+ 0028           arg2:		dfs 2
+ 002A           arg3:		dfs 2
+ 002C           retval:		dfs 2	; return val from functions
+                
+                
+ 002E           delay_time:	dfs 2	; delay time in msec for wait_msec
+ 0030           w_temp:		dfs 2	; used by wait_msec
+ 0032           beep_p:		dfs 2
+ 0034           lcd_disp:		; address of lcd display reg
+ 0034           lcd_cntl:		; address of lcd control reg
+ 0034           lcd_mesg:		; pointer to text to display
+ 0034           lcd_foo:		; used by lcd fncs
+ 0034           lcd_char:		; used by lcd fncs
+ 0034           rst_flag:	dfs 2	; to detect warm reset
+ 0036           char_in:	dfs 2	; input char
+ 0038           spike:		dfs 2	; watchdog counter
+ 003A           time:		dfs 6	; store elapsed time
+ 0040           timeto:		dfs 2	; time for interupt
+ 0042           int_temp:	dfs 2	; tmp for int. handler
+ 0044           int_temp2:	dfs 2
+                
+ 0046           char_flag:	dfs 1	; serial i/o flags
+ 0047           adc_value:	dfs 1	; most recent adc result
+ 0048           last_c:		dfs 1	; most recent value xmitted
+ 0049           spstat_image:	dfs 1	; used by serial int
+                
+                
+ 004A           org $ + {$%2}	; set up vector table
+                
+ 004A           int_vector_start:
+ 004A           timer_ovf:	dfs 2
+ 004C           ad_complete:	dfs 2 
+ 004E           hsi_data:	dfs 2
+ 0050           hso_sent:	dfs 2
+ 0052           hsi_0_pin:	dfs 2
+ 0054           soft_timer:	dfs 2
+ 0056           serial_io:	dfs 2
+ 0058           ext_int:	dfs 2
+ 005A           trap_int:	dfs 2
+ 005C           unimp_op:	dfs 2
+ 005E           incl "init.i96"		; these ***MUST*** be first
+                
+                
+ 2000           org $2000	; interupt vector table
+                
+ 2000 A022      dwl	null_int	;_timer_ovf		; timer ov
+ 2002 A322      dwl	adc_int		;_ad_complete		; done adc
+ 2004 A022      dwl	null_int	;_hsi_data		; hsi data available
+ 2006 A022      dwl	null_int	;_hso_sent		; hso
+ 2008 A022      dwl	null_int	;_hsi_0_pin		; hsi.0
+ 200A 8322      dwl	timer_int	;_soft_timer		; software timer
+ 200C 3525      dwl	serial_int	;_serial_io		; serial io
+ 200E A022      dwl	null_int	;_ext_int		; ext int
+ 2010 A022      dwl	null_int	;_trap_int		; trap int
+ 2012 A022      dwl	null_int	;_unimp_op		; unimpl. opcode int
+                
+                
+ 2018           org		$2018
+ 2018 ED        ccr:	dfb	11101101b	; chip config reg
+                				; limit to 3 wait states, 8bit bus
+                
+ 2080           org $2080	; reset vectors to here
+ 2080           reset:
+                
+ 2080 FA        	di			; hold off on INTs  for now
+ 2081 B10015    	ldb ioc0, #00000000b	; not enable HSIs, nor T2
+ 2084 B12116    	ldb ioc1, #{{1<<sel_pwm}|{1<<sel_txd}}
+ 2087 B16008    	ldb imask,#{{1<<int_sio}|{1<<int_timer}}	
+ 208A B00009    	ldb ipend,r0		; clear any pending ints
+ 208D B00049    	ldb spstat_image,r0
+ 2090 B00046    	ldb char_flag,r0
+                
+ 2093           	clr_fifo:		; clear out HSI FIFO
+ 2093 A00400    		ld r0, hsi_time
+ 2096 0000      		skip
+ 2098 0000      		skip			; delay 8 state times
+ 209A 3F16F6    		jbs ios1,7,clr_fifo
+                
+                	; zero all lo-level regs and stack space
+ 209D A11A0018  	ld sp,#REG_START     ; start of lo-lev regs
+ 20A1           	reset_clram:
+ 20A1 C21900    		st r0,[sp]+
+ 20A4 89FF0018  		cmp sp,#REG_LAST    ; end of internal ram
+ 20A8 DEF7      		jlt reset_clram
+                
+ 20AA A1FE0018  	ld  sp,#$FE		; set up a *SMALL* stack
+ 20AE EF6804    	call init_serial
+ 20B1 EF9C04    	call init_ppi
+ 20B4 EFAE04    	call init_pit
+                	;call init_int_table
+                	;call init_display
+                
+ 20B7 A00A40    	ld timeto, timer1
+ 20BA 655AFF40  	add timeto, #timer_count
+ 20BE 3E15FD    		jbs ios0,6,$		; wait till CAM !full
+ 20C1 FD        	nop
+ 20C2 B11806    	ldb hso_command, #timer_command
+ 20C5 A04004    	ld hsi_time, timeto	; start timer
+                
+ 20C8 A1341234  	ld rst_flag, #RST_WARM
+ 20CC E70000    	ljmp main
+                
+ 20CF           incl "main.i96"
+                
+ 20CF           main:
+                ;	ld sp, #RAM_LAST - {RAM_LAST % 2}	; set up larger stack
+ 20CF FB        	ei
+ 20D0 2AB3      	call init_message
+                	
+ 20D2           	main_wait_enq:	; simple handshake
+                		;call chinput
+                		;cmpb retval,#ENQ
+                		;jne main_wait_enq
+ 20D2 B13E26    	ldb arg1,#">" ;#ACK
+ 20D5 2B62      	call chout
+ 20D7 2B6F      	call chinput
+ 20D9 717F2C    	andb retval, #0x7F
+ 20DC B02C26    	ldb arg1,retval
+ 20DF B02C1B    	ldb ah,retval
+ 20E2 2B8D      	call byte_serial ;chout
+                
+                	
+                	; switch (char_in)
+                
+                ; using: MPAWGDQXSabcLB CO
+                		
+ 20E4 990A1B    		cmpb ah,#nl
+ 20E7 D703      			jne $+5
+ 20E9 E7E6FF    			ljmp main_wait_enq
+ 20EC 990D1B    		cmpb ah,#cr
+ 20EF D703      			jne $+5
+ 20F1 E7DEFF    			ljmp main_wait_enq
+ 20F4 994D1B    		cmpb ah,#"M"
+ 20F7 D703      			jne $+5
+ 20F9 E78700    			ljmp sw_message
+ 20FC 99501B    		cmpb ah,#"P"
+ 20FF D703      			jne $+5
+ 2101 E78700    			ljmp sw_setpwm
+ 2104 99411B    		cmpb ah,#"A"
+ 2107 D703      			jne $+5
+ 2109 E78600    			ljmp sw_adcval
+ 210C 99521B    		cmpb ah,#"R"
+ 210F D703      			jne $+5
+ 2111 E79D00    			ljmp sw_read_ram
+ 2114 99571B    		cmpb ah,#"W"
+ 2117 D703      			jne $+5
+ 2119 E7A300    			ljmp sw_write_ram
+ 211C 99471B    		cmpb ah,#"G"
+ 211F D703      			jne $+5
+ 2121 E7A900    			ljmp sw_execute_ram
+ 2124 99441B    		cmpb ah,#"D"
+ 2127 D703      			jne $+5
+ 2129 E7CB00    			ljmp sw_write_dac
+ 212C 99511B    		cmpb ah,#"Q"
+ 212F D703      			jne $+5
+ 2131 E7CE00    			ljmp sw_query_ppi
+ 2134 99581B    		cmpb ah,#"X"
+ 2137 D703      			jne $+5
+ 2139 E79500    			ljmp sw_reset
+ 213C 99531B    		cmpb ah,#"S"
+ 213F D703      			jne $+5
+ 2141 E7E700    			ljmp sw_write_ppi
+ 2144 99611B    		cmpb ah,#"a"
+ 2147 D703      			jne $+5
+ 2149 E7E104    			ljmp word_loopback
+ 214C 99621B    		cmpb ah,#"b"
+ 214F D703      			jne $+5
+ 2151 E7EE04    			ljmp string_loopback
+ 2154 99631B    		cmpb ah,#"c"
+ 2157 D703      			jne $+5
+ 2159 E77104    			ljmp test_code
+ 215C 994C1B    		cmpb ah,#"L"
+ 215F D703      			jne $+5
+ 2161 E7EE00    			ljmp sw_alarm
+ 2164 996C1B    		cmpb ah,#"l"
+ 2167 D703      			jne $+5
+ 2169 E7E600    			ljmp sw_alarm
+ 216C 99421B    		cmpb ah,#"B"
+ 216F D703      			jne $+5
+ 2171 E70801    			ljmp sw_set_beep_p
+                			
+ 2174 99431B    		cmpb ah,#"C"
+                			;je sw_get_pit_count
+ 2177 994F1B    		cmpb ah,#"O"
+                			;je sw_set_mode
+                	
+ 217A           		sw_default:
+ 217A 2073      			jmp sw_notimpl
+ 217C           	sw_end:
+ 217C B10426    	ldb arg1,#EOT
+ 217F 2AB8      	call chout
+ 2181 274F      	jmp main_wait_enq
+                	
+                	;****************************
+                	
+                	
+ 2183           	sw_message:
+ 2183 A1AF2226  		ld arg1,#message_string
+ 2187 2AD0      		call mesg_serial
+ 2189 27F1      		jmp sw_end
+                	
+ 218B           	sw_setpwm:
+ 218B 2B20      		call read_byte
+ 218D C4172C    		stb retval,pwm_control
+ 2190 27EA      		jmp sw_end
+                	
+ 2192           	sw_adcval:
+ 2192 2B19      		call read_byte
+ 2194 B02C1A    		ldb al, retval
+ 2197 71071A    		andb al,#$7
+ 219A 91081A    		orb al,#{1<<adc_go}
+ 219D B01A02    		ldb ad_command, al
+ 21A0           		sw_adc_loop:
+ 21A0 0000      			skip		; delay 8 state times
+ 21A2 0000      			skip
+ 21A4 3B02F9    			jbs ad_result,3,sw_adc_loop
+ 21A7 B00200    		ldb r0, ad_result	; must be read as 2 bytes
+ 21AA B00326    		ldb arg1,ad_result+1
+ 21AD 2AC2      		call byte_serial
+ 21AF 27CB      		jmp sw_end
+                	
+ 21B1           	sw_read_ram:
+ 21B1 2B2F      		call read_word
+ 21B3 A02C26    		ld arg1,retval	; adress
+ 21B6 2B2A      		call read_word
+ 21B8 A02C28    		ld arg2,retval	; count
+ 21BB 2A0E      		call read_ram
+ 21BD 27BD      		jmp sw_end
+                	
+ 21BF           	sw_write_ram:
+ 21BF 2B21      		call read_word
+ 21C1 A02C26    		ld arg1,retval	; adress
+ 21C4 2B1C      		call read_word
+ 21C6 A02C28    		ld arg2,retval	; count
+ 21C9 2A20      		call write_ram
+ 21CB 27AF      		jmp sw_end
+                	
+ 21CD           	sw_execute_ram:
+ 21CD 2B13      		call read_word
+ 21CF E32C      		br [retval]
+                	
+ 21D1           	sw_reset:
+ 21D1 A100E026  		ld arg1,#RAM_START
+ 21D5 B10828    		ldb arg2, #8
+ 21D8 2B1A      		call read_string
+ 21DA A1E92128  		ld arg2, #pvnert_string
+ 21DE B1062A    		ldb arg3,#6
+ 21E1 29C2      		call strncmp
+ 21E3 DB02      		jc sw_reset_nope
+ 21E5 2699      			jmp reset
+ 21E7           		sw_reset_nope:
+ 21E7 2793      		jmp sw_end
+ 21E9 70766E6572	pvnert_string:	dfb "pvnert"
+                
+ 21EF           	sw_notimpl:
+ 21EF A1392326  		ld arg1,#not_impl_mesg
+ 21F3 2A64      		call mesg_serial
+ 21F5 2785      		jmp sw_end
+                	
+ 21F7           	sw_write_dac:
+ 21F7 A100151A  		ld ax, #DAC_A0
+ 21FB 2AB0      		call read_byte	 ; get value
+ 21FD C61A2C    		stb retval, [ax] ; write to DAC
+ 2200 277A      		jmp sw_end
+                
+ 2202           	sw_query_ppi:
+ 2202 2AA9      		call read_byte	; which PPI
+ 2204 B0002D    		ldb retval+1,r0	; zero extend
+ 2207 99032C    		cmpb retval, #3
+ 220A D206      			jgt sw_qppi_b
+ 220C 6500102C  			add retval, #PPI_A0
+ 2210 2004      			jmp sw_qppi_cnt
+ 2212           		sw_qppi_b:
+ 2212 65FC102C  			add retval, #PPI_B0-4
+ 2216           		sw_qppi_cnt:
+ 2216 A02C1A    		ld ax, retval
+ 2219 A01A26    		ld arg1,ax
+ 221C 2A7F      		call word_serial
+ 221E A13A0026  		ld arg1,#":"
+ 2222 2A15      		call chout
+ 2224 B21A26    		ldb arg1, [ax]		; read PPI
+ 2227 2A48      		call byte_serial	; send over serial
+ 2229 2751      		jmp sw_end
+                
+ 222B           	sw_write_ppi:
+ 222B 2A80      		call read_byte	; which PPI
+ 222D B0002D    		ldb retval+1,r0	; zero extend
+ 2230 99032C    		cmpb retval, #3
+ 2233 D206      			jgt sw_wppi_b
+ 2235 6500102C  			add retval, #PPI_A0
+ 2239 2004      			jmp sw_wppi_cnt
+ 223B           		sw_wppi_b:
+ 223B 65FC102C  			add retval, #PPI_B0-4
+ 223F           		sw_wppi_cnt:
+ 223F A02C1A    		ld ax, retval
+ 2242 A01A26    		ld arg1,ax
+ 2245 2A56      		call word_serial
+ 2247 A13A0026  		ld arg1,#":"
+ 224B 2A60      		call read_byte		; get value
+ 224D C61A2C    		stb retval, [ax]	; write to PPI
+ 2250 272A      		jmp sw_end
+                
+ 2252           	sw_alarm:
+ 2252 A1400032  		ld beep_p, #$0040
+ 2256 A100101A  		ld ax, #PPI_A0
+ 225A A100111E  		ld cx, #PPI_B0
+ 225E B21A1D    		ldb bh, [ax]
+ 2261           		sw_alarm_loop:
+ 2261 A0322E    			ld delay_time, beep_p
+ 2264 2912      			call wait_msec
+ 2266 95011D    			xorb bh, #01
+ 2269 C61A1D    			stb bh, [ax]
+ 226C B21E1C    			ldb bl, [cx]		; test button
+ 226F 71011C    			andb bl, #01
+ 2272 D7ED      			jne sw_alarm_loop
+ 2274 71FE1D    		andb bh, #$FE
+ 2277 C61A1D    		stb bh, [ax]			; turn it off
+ 227A 2700      		jmp sw_end
+                
+ 227C           	sw_set_beep_p:
+ 227C 2A64      		call read_word
+ 227E A02C32    		ld beep_p, retval
+ 2281 26F9      		jmp sw_end
+                			; the rest order is irrelevant
+ 2283           incl "ints.i96"
+                
+                
+                ; serial_int is in serial.i96
+                
+                
+ 2283           timer_int:
+ 2283 F2        	pushf
+ 2284 655AFF40  	add timeto, #timer_count
+ 2288 3E15FD    		jbs ios0,6,$
+ 228B FD        	nop
+ 228C B11806    	ldb hso_command, #timer_command
+ 228F A04004    	ld hso_time, timeto		; start timer again for next int
+                
+ 2292 073A      	inc time		; update real time (in #time_count units)
+ 2294 A4003C    	addc time+2, r0
+ 2297 A40040    	addc time+6, r0
+ 229A B10008    	ldb int_mask,#00b	; in case we want to enable something
+ 229D FB        	ei	
+                
+                	; do timer based stuff here
+                
+ 229E           	timer_int_end:
+ 229E F3        	popf
+ 229F F0        	ret
+                ;*********************
+                
+ 22A0           null_int:	; nop int vectors
+ 22A0 F2        	pushf
+ 22A1 F3        	popf
+ 22A2 F0        	ret
+                ;*********************
+                
+ 22A3           adc_int:
+ 22A3 F2        	pushf
+ 22A4 B00247    	ldb adc_value,ad_result
+ 22A7 B00347    	ldb adc_value,ad_result+1	; only want 8 msbs
+ 22AA B10C02    	ldb ad_command,#{{1<<adc_go}|4}	;start adc channel #4
+ 22AD F3        	popf
+ 22AE F0        	ret
+                ;*********************
+                
+                
+ 22AF           incl "misc.i96"
+                
+ 22AF 0A0D693936message_string:	dfb $0A,$0D,"i96 Controller Unit",$0A, $0D
+ 22C6 4372656174		dfb "Created by: Jeff Weisberg",$0A, $0D
+ 22E1 467269204D		dfb "Fri May  8 21:55:36 EDT 1992",$0A,$0D
+ 22FF 0A0D536F66version_msg:	dfb $0A,$0D, "Software Version: A2.01", $0A,$0D,
+ 231A 53756E2044		dfb "Sun Dec 13 15:37:24 EST 1992", $0A,$0D,  00
+                
+ 2339 0A0D556E69not_impl_mesg:	dfb $0A,$0D,"Unimplemented Function",$0A,$0D, 00
+ 2354 0A0D48656Cinit_mesg1:	dfb $0A,$0D,"Hello, World",$0A,$0D, 00
+ 2365 0A0D576174reset_msg:	dfb $0A,$0D,"Watchdog Reset",$0A,$0D, 00
+                
+                
+                ;*********************
+                
+ 2378           wait_msec:		; waits one msec
+ 2378 A1D70030  		ld w_temp,#215
+ 237C           		wait_f:
+ 237C 0530      			dec w_temp
+ 237E D7FC      			jne wait_f
+ 2380 052E      		dec delay_time
+ 2382 D7F4      		jne wait_msec
+ 2384 F0        	ret
+                ;*********************
+                
+ 2385           init_message:
+ 2385 A1542326  	ld arg1,#init_mesg1
+ 2389 28CE      	call mesg_serial
+ 238B F0        	ret
+                ;*********************
+                
+ 238C           idle_loop:
+ 238C C81A      	push ax
+ 238E A03B1A    	ld ax, time+1
+ 2391 68381A    	sub ax, spike
+ 2394 89D4011A  	cmp ax, #wait_max
+ 2398 DE08      	jlt idle_cont
+ 239A A1652326  		ld arg1,#reset_msg
+ 239E 28B9      		call mesg_serial
+ 23A0 24DE      		jmp reset
+ 23A2           	idle_cont:
+ 23A2 CC1A      	pop ax
+ 23A4 F0        	ret
+                
+                ;*********************
+                
+ 23A5           strncmp:
+ 23A5 C826      	push arg1
+ 23A7 C828      	push arg2
+ 23A9 C82A      	push arg3
+ 23AB C81A      	push ax
+ 23AD           	strncmp_loop:
+ 23AD B2271A    		ldb  al,[arg1]+
+ 23B0 9A291A    		cmpb al,[arg2]+
+ 23B3 D709      		jne strncmp_nope
+ 23B5 E02AF5    			djnz arg3, strncmp_loop
+ 23B8 B0002C    	ldb retval,r0
+ 23BB F8        	clrc
+ 23BC 2004      	jmp strncmp_done
+ 23BE           	strncmp_nope:
+ 23BE B1012C    		ldb  retval,#1
+ 23C1 F9        		setc
+ 23C2           	strncmp_done:
+ 23C2 CC1A      	pop ax
+ 23C4 CC2A      	pop arg3
+ 23C6 CC28      	pop arg2
+ 23C8 CC26      	pop arg1
+ 23CA F0        	ret
+                ;*********************
+                
+ 23CB           read_ram:
+ 23CB C826      	push arg1	; adress
+ 23CD C828      	push arg2	; count
+ 23CF C81A      	push ax
+ 23D1 A0261A    	ld ax, arg1
+ 23D4 65000128  	add arg2, #$0100
+ 23D8           	read_ram_loop:
+ 23D8 B21B26    			ldb arg1, [ax]+
+ 23DB 285C      			call chout
+ 23DD E028F8    			djnz arg2, read_ram_loop
+ 23E0 E029F5    		djnz arg2+1, read_ram_loop
+ 23E3 CC1A      	pop ax
+ 23E5 CC28      	pop arg2
+ 23E7 CC26      	pop arg1
+ 23E9 F8        	clrc
+ 23EA F0        	ret
+                ;**********************
+                
+ 23EB           write_ram:
+ 23EB C826      	push arg1	; adress
+ 23ED C828      	push arg2	; count
+ 23EF 65000128  	add arg2, #$0100
+ 23F3           	write_ram_loop:
+ 23F3 2853      			call chinput
+ 23F5 C6272C    			stb retval, [arg1]+
+ 23F8 E028F8    			djnz arg2, write_ram_loop
+ 23FB E029F5    		djnz arg2+1, write_ram_loop
+ 23FE CC28      	pop arg2
+ 2400 CC26      	pop arg1
+ 2402 F8        	clrc
+ 2403 F0        	ret
+                ;**********************
+                
+ 2404           get_adc:
+ 2404 C826      	push arg1
+ 2406 710726    	andb arg1,#$7
+ 2409 910826    	orb arg1,#{1<<adc_go}
+ 240C B02602    	ldb ad_command, arg1
+ 240F           	get_adc_loop:
+ 240F 0000      		skip		; delay 8 state times
+ 2411 0000      		skip
+ 2413 3B02F9    		jbs ad_result,3,get_adc_loop
+ 2416 B0022C    	ldb retval, ad_result	; must be read as 2 bytes
+ 2419 B0032D    	ldb retval+1,ad_result+1
+ 241C 08062C    	shr retval, #6
+ 241F CC26      	pop arg1
+ 2421 F0        	ret
+                
+                
+ 2422           do_beep:
+ 2422 C81A      	push ax
+ 2424 B1801B    	ldb ah,#$80
+ 2427 C4171B    	stb ah,pwm_control
+ 242A A1FA002E  	ld delay_time,#250
+ 242E 2F48      	call wait_msec
+ 2430 B0001B    	ldb ah,r0
+ 2433 C4171B    	stb ah,pwm_control
+ 2436 CC1A      	pop ax
+ 2438 F0        	ret
+                
+ 2439           incl "serial.i96"
+                
+ 2439           putchar:
+ 2439           chout:			; outputs a char
+ 2439 FD        		nop
+ 243A FD        		nop
+ 243B 3549FB    		jbc spstat_image,TI_BIT,chout
+ 243E B02648    	ldb last_c,arg1
+ 2441 71DF49    	andb spstat_image,#{~{1<<TI_BIT}}	; clear TI flag
+ 2444 B02607    	ldb sbuf,arg1
+ 2447 F0        	ret
+                ;*********************
+                
+ 2448           getchar:
+ 2448           chinput:
+ 2448 A03B38    	ld spike, time+1
+ 244B           	chin_loop:
+ 244B 2F3F      		call idle_loop
+ 244D FD        		nop
+ 244E FD        		nop
+ 244F 3046F9    		jbc char_flag,cflg_gotit,chin_loop
+ 2452 71FE46    	andb char_flag,#{~{1<<cflg_gotit}}
+ 2455 B0362C    	ldb retval,char_in
+ 2458 F0        	ret
+                ;*********************
+                
+ 2459           puts:
+ 2459           mesg_serial:
+ 2459 C826      	push arg1
+ 245B C81A      	push ax
+ 245D A0261A    	ld ax,arg1
+ 2460           	mesg_serial_loop:
+ 2460 B21B26    		ldb arg1,[ax]+
+ 2463 980026    		cmpb arg1,r0
+ 2466 DF04      		je mesg_serial_done
+ 2468 2FCF      			call chout
+ 246A 27F4      			jmp mesg_serial_loop
+ 246C           	mesg_serial_done:
+ 246C CC1A      	pop ax
+ 246E CC26      	pop arg1
+ 2470 F0        	ret
+                ;*********************
+                
+ 2471           byte_serial:
+ 2471 C826      	push arg1
+ 2473 180426    	shrb arg1,#4
+ 2476 710F26    	andb arg1,#$F
+ 2479 990A26    	cmpb arg1,#$A
+ 247C DE03      	jlt byte_ser_cont2
+ 247E 750726    		addb arg1,#7
+ 2481           	byte_ser_cont2:
+ 2481 753026    	addb arg1,#$30
+ 2484 2FB3      	call chout		; msnibble
+ 2486 CC26      	pop arg1
+ 2488 C826      	push arg1
+ 248A 710F26    	andb arg1,#$F
+ 248D 990A26    	cmpb arg1,#$A
+ 2490 DE03      	jlt byte_ser_cont1
+ 2492 750726    		addb arg1,#7
+ 2495           	byte_ser_cont1:
+ 2495 753026    	addb arg1,#$30
+ 2498 2F9F      	call chout		; lsnibble
+ 249A CC26      	pop arg1
+ 249C F0        	ret
+                ;*********************
+                
+ 249D           word_serial:
+ 249D C826      	push arg1
+ 249F B02726    	ldb arg1, arg1+1	; msb
+ 24A2 2FCD      	call byte_serial
+ 24A4 CC26      	pop arg1
+ 24A6 C826      	push arg1		; lsb
+ 24A8 2FC7      	call byte_serial
+ 24AA CC26      	pop arg1
+ 24AC F0        	ret
+                ;*********************
+ 24AD           read_byte:
+ 24AD C81A      	push ax
+ 24AF 2F97      	call chinput		; msnibble
+ 24B1 717F2C    	andb retval, #$7F
+ 24B4 79302C    	subb retval, #$30
+ 24B7 990A2C    	cmpb retval, #$A
+ 24BA DE03      	jlt read_byte_cont1
+ 24BC 79072C    		subb retval, #$7
+ 24BF           	read_byte_cont1:
+ 24BF 710F2C    	andb retval, #$F
+ 24C2 19042C    	shlb retval, #$4
+ 24C5 B02C1A    	ldb al,retval
+ 24C8 2F7E      	call chinput		; lsnibble
+ 24CA 717F2C    	andb retval, #$7F
+ 24CD 79302C    	subb retval, #$30
+ 24D0 990A2C    	cmpb retval, #$A
+ 24D3 DE03      	jlt read_byte_cont2
+ 24D5 79072C    		subb retval, #$7
+ 24D8           	read_byte_cont2:
+ 24D8 710F2C    	andb retval, #$F
+ 24DB 901A2C    	orb retval, al
+ 24DE CC1A      	pop ax
+ 24E0 F8        	clrc
+ 24E1 F0        	ret
+                ;**********************
+ 24E2           read_word:
+ 24E2 C81A      	push ax
+ 24E4 2FC7      	call read_byte		; msb
+ 24E6 B02C1A    	ldb al, retval
+ 24E9 2FC2      	call read_byte		; lsb
+ 24EB B02C2C    	ldb retval,retval
+ 24EE B01A2D    	ldb retval+1,al
+ 24F1 CC1A      	pop ax
+ 24F3 F0        	ret
+                ;************************
+                
+ 24F4           gets:
+ 24F4           read_string:
+ 24F4 C826      	push arg1	; ptr to buffer
+ 24F6 C828      	push arg2	; max length
+ 24F8           	read_string_loop:
+ 24F8 2F4E      		call chinput
+ 24FA C6272C    		stb retval,[arg1]+
+ 24FD 990A2C    		cmpb retval, #NL	; upto newline
+ 2500 DF08      		je read_string_done
+ 2502 990D2C    		cmpb retval, #CR	; or return
+ 2505 DF03      		je read_string_done
+ 2507 E028EE    			djnz arg2, read_string_loop
+ 250A           	read_string_done:
+ 250A C62600    	stb r0, [arg1]	; put a null @ end 
+ 250D A0282C    	ld retval, arg2
+ 2510 CC28      	pop arg2
+ 2512 CC26      	pop arg1
+ 2514 582C282C  	subb retval, arg2, retval
+ 2518 F0        	ret
+                ;*************************
+                
+                
+ 2519           init_serial:		; initilize the serial port
+ 2519 B1340E    	ldb baud_rate,#$34
+ 251C B1800E    	ldb baud_rate,#$80	; 2400 baud
+ 251F B10911    	ldb sp_con,#00001001b	; enable receive, mode 01
+ 2522 B01100    	ldb r0,sp_stat		; clear stat
+ 2525 B00700    	ldb r0,sbuf		
+ 2528 B00007    	ldb sbuf,r0
+ 252B A120032E  	ld delay_time,#800	; wait for uart to init
+ 252F B12049    	ldb spstat_image,#{1<<TI_BIT}
+ 2532 2E44      	call wait_msec
+ 2534 F0        	ret
+                ;*********************
+                
+ 2535           serial_int:
+ 2535 F2        	pushf
+ 2536 901149    	orb spstat_image,sp_stat
+ 2539 354900    	jbc spstat_image,TI_BIT,serial_not_ti
+                		; we have an xmit int
+                
+ 253C           	serial_not_ti:
+ 253C 36490F    	jbc spstat_image,RI_BIT,serial_done
+                		; we have an rcv int
+                
+ 253F B00736    		ldb char_in,sbuf
+ 2542 71BF49    		andb spstat_image,#{~{1<<RI_BIT}}
+ 2545 304603    		jbc  char_flag,cflg_gotit,serial_gotit_ok
+ 2548 910246    			orb  char_flag,#{1<<cflg_ov}	; oops--overflow
+ 254B           		serial_gotit_ok:
+ 254B 910146    		orb  char_flag,#{1<<cflg_gotit}
+                		;push arg1
+                		;ldb arg1,#":"
+                		;call chout
+                		;pop arg1
+                
+ 254E           	serial_done:
+ 254E F3        	popf
+ 254F F0        	ret
+                ;*********************
+                ; incl "lcd.i96"
+ 2550           incl "ppi.i96"
+                
+ 2550           init_ppi:
+ 2550 A103101A  	ld  ax, #PPI_AC
+ 2554 B1801C    	ldb bl, #10000000b	; all outputs
+ 2557 C61A1C    	stb bl, [ax]
+ 255A B19B1C    	ldb bl, #10011011b	; all inputs
+ 255D A103111A  	ld  ax, #PPI_BC
+ 2561 C61A1C    	stb bl, [ax]
+                
+ 2564 F0        	ret
+ 2565           incl "pit.i96"
+                
+                
+ 2565           init_pit:
+ 2565 B0361A    ldb al, 00110110b
+ 2568 A1031224  ld  si, #PIT_AC
+ 256C C6241A    stb al, [si]
+ 256F 75401A    addb al, #01000000b
+ 2572 C6241A    stb al, [si]
+ 2575 75401A    addb al, #01000000b
+ 2578 C6241A    stb al, [si]
+ 257B 75401A    addb al, #01000000b
+                
+ 257E A1001224  ld si,#PIT_A0
+ 2582 C62400    stb r0, [si]
+ 2585 C62400    stb r0, [si]
+ 2588 A1011224  ld si,#PIT_A1
+ 258C C62400    stb r0, [si]
+ 258F C62400    stb r0, [si]
+ 2592 A1021224  ld si,#PIT_A2
+ 2596 C62400    stb r0, [si]
+ 2599 C62400    stb r0, [si]
+                
+ 259C F0        ret
+ 259D           incl "test.i96"
+                
+ 259D 0A0D537461start_test_msg:	dfb $A,$D, "Starting Tests", $A,$D,  00
+ 25B0 5061737365pass_msg:	dfb "Passed", 00
+ 25B7 4661696C65fail_msg:	dfb "Failed", 00
+ 25BE 0A0D546573test_ram_msg:	dfb $A,$D,"Testing Ram ", 00
+                
+ 25CD           test_code:
+ 25CD A19D2526  	ld arg1, #start_test_msg
+ 25D1 2E86      	call mesg_serial
+                	
+ 25D3 A1BE2526  	ld arg1, #test_ram_msg
+ 25D7 2E80      	call mesg_serial
+ 25D9 A100E01A  	ld ax, #RAM_START
+ 25DD B1AA1C    	ldb bl, #$AA
+ 25E0           	test_ram_loop_a:
+ 25E0 C61B1C    		stb bl, [ax]+
+ 25E3 89FFFF1A  		cmp ax, #RAM_LAST
+ 25E7 D7F7      		jne test_ram_loop_a
+ 25E9 A100E01A  	ld ax, #RAM_START
+ 25ED           	test_ram_loop_b:
+ 25ED 9A1B1C    		cmpb bl, [ax]+
+ 25F0 D72D      		jne test_ram_fail
+ 25F2 89FFFF1A  		cmp ax, #RAM_LAST
+ 25F6 D7F5      		jne test_ram_loop_b
+ 25F8 A100E01A  	ld ax, #RAM_START
+ 25FC B1551C    	ldb bl, #$55
+ 25FF           	test_ram_loop_c:
+ 25FF C61B1C    		stb bl, [ax]+
+ 2602 89FFFF1A  		cmp ax, #RAM_LAST
+ 2606 D7F7      		jne test_ram_loop_c
+ 2608 A100E01A  	ld ax, #RAM_START
+ 260C           	test_ram_loop_d:
+ 260C 9A1B1C    		cmpb bl, [ax]+
+ 260F D70E      		jne test_ram_fail
+ 2611 89FFFF1A  		cmp ax, #RAM_LAST
+ 2615 D7F5      		jne test_ram_loop_d
+ 2617 A1B02526  	ld arg1, #pass_msg
+ 261B 2E3C      	call mesg_serial
+ 261D 200B      	jmp test_ram_done
+ 261F           	test_ram_fail:
+ 261F A1B72526  		ld arg1,#fail_msg
+ 2623 2E34      		call mesg_serial
+ 2625 A01A26    		ld arg1, ax		; display fail address
+ 2628 2E73      		call word_serial
+ 262A           	test_ram_done:
+ 262A E74FFB    		jmp sw_end
+                
+                
+                
+ 262D           word_loopback:
+ 262D B15A26    	ldb arg1,#$5A
+ 2630 2E3F      	call byte_serial
+ 2632 A1AFBE26  	ld arg1,#$BEAF
+ 2636 2E65      	call word_serial
+ 2638 2EA8      	call read_word
+ 263A A02C26    	ld arg1,retval
+ 263D 2E5E      	call word_serial
+ 263F E73AFB    	jmp sw_end
+                
+ 2642           string_loopback:
+ 2642 A100E026  	ld arg1,#RAM_START
+ 2646 B12028    	ldb arg2,#32
+ 2649 2EA9      	call read_string
+ 264B 2E0C      	call mesg_serial	; ptr already in arg1
+ 264D E72CFB    	jmp sw_end
+                
+ 0000           	END
+IO-Unit Code; -jaw
+
+0006  ACK                0003  ADC_GO             22A3  ADC_INT            
+0047  ADC_VALUE          0002  AD_COMMAND         004C  AD_COMPLETE        
+0002  AD_RESULT          001B  AH                 001A  AL                 
+0026  ARG1               0028  ARG2               002A  ARG3               
+001A  AX                 001C  BAR                000E  BAUD_RATE          
+001E  BAZ                0032  BEEP_P             0007  BEL                
+001D  BH                 001C  BL                 001C  BX                 
+2471  BYTE_SERIAL        2495  BYTE_SER_CONT1     2481  BYTE_SER_CONT2     
+2018  CCR                0000  CFLG_GOTIT         0001  CFLG_OV            
+001F  CH                 0046  CHAR_FLAG          0036  CHAR_IN            
+2448  CHINPUT            244B  CHIN_LOOP          2439  CHOUT              
+001E  CL                 2093  CLR_FIFO           000D  CR                 
+001E  CX                 1500  DAC_A0             002E  DELAY_TIME         
+0021  DH                 0020  DL                 2422  DO_BEEP            
+0020  DX                 0005  ENQ                0004  EOT                
+001B  ESC                0022  EX                 0058  EXT_INT            
+25B7  FAIL_MSG           0020  FEE                0022  FIE                
+0024  FOE                001A  FOO                2448  GETCHAR            
+24F4  GETS               2404  GET_ADC            240F  GET_ADC_LOOP       
+0052  HSI_0_PIN          004E  HSI_DATA           0003  HSI_MODE           
+0006  HSI_STATUS         0004  HSI_TIME           0006  HSO_COMMAND        
+0050  HSO_SENT           0004  HSO_TIME           23A2  IDLE_CONT          
+238C  IDLE_LOOP          0008  IMASK              2354  INIT_MESG1         
+2385  INIT_MESSAGE       2565  INIT_PIT           2550  INIT_PPI           
+2519  INIT_SERIAL        0001  INT_ADC            0007  INT_EXTINT         
+0002  INT_HSI            0003  INT_HSO            0008  INT_MASK           
+0009  INT_PENDING        0006  INT_SIO            0042  INT_TEMP           
+0044  INT_TEMP2          01F4  INT_TIME           0005  INT_TIMER          
+004A  INT_VECTOR_START   0015  IOC0               0016  IOC1               
+000E  IOPORT0            000F  IOPORT1            0010  IOPORT2            
+0015  IOS0               0016  IOS1               0009  IPEND              
+0048  LAST_C             1700  LCD_A0             0034  LCD_CHAR           
+0034  LCD_CNTL           0034  LCD_DISP           0034  LCD_FOO            
+0034  LCD_MESG           20CF  MAIN               20D2  MAIN_WAIT_ENQ      
+2459  MESG_SERIAL        246C  MESG_SERIAL_DONE   2460  MESG_SERIAL_LOOP   
+22AF  MESSAGE_STRING     0008  MHZ                000A  NL                 
+2339  NOT_IMPL_MESG      0000  NUL                0000  NULL               
+22A0  NULL_INT           25B0  PASS_MSG           CB2F  PI                 
+1200  PIT_A0             1201  PIT_A1             1202  PIT_A2             
+1203  PIT_AC             000E  PORT0              000F  PORT1              
+0010  PORT2              1000  PPI_A0             1001  PPI_A1             
+1002  PPI_A2             1003  PPI_AC             1100  PPI_B0             
+1101  PPI_B1             1102  PPI_B2             1103  PPI_BC             
+2439  PUTCHAR            2459  PUTS               21E9  PVNERT_STRING      
+0017  PWM_CONTROL        0000  R0                 FFFF  RAM_LAST           
+E000  RAM_START          24AD  READ_BYTE          24BF  READ_BYTE_CONT1    
+24D8  READ_BYTE_CONT2    23CB  READ_RAM           23D8  READ_RAM_LOOP      
+24F4  READ_STRING        250A  READ_STRING_DONE   24F8  READ_STRING_LOOP   
+24E2  READ_WORD          00FF  REG_LAST           001A  REG_START          
+2080  RESET              20A1  RESET_CLRAM        2365  RESET_MSG          
+002C  RETVAL             0006  RI_BIT             3FFF  ROM_LAST           
+2000  ROM_START          0034  RST_FLAG           1234  RST_WARM           
+0007  SBUF               0000  SEL_PWM            0005  SEL_TXD            
+254E  SERIAL_DONE        254B  SERIAL_GOTIT_OK    2535  SERIAL_INT         
+0056  SERIAL_IO          253C  SERIAL_NOT_TI      0024  SI                 
+0054  SOFT_TIMER         0018  SP                 0038  SPIKE              
+0049  SPSTAT_IMAGE       0011  SP_CON             0011  SP_STAT            
+259D  START_TEST_MSG     2642  STRING_LOOPBACK    23A5  STRNCMP            
+23C2  STRNCMP_DONE       23AD  STRNCMP_LOOP       23BE  STRNCMP_NOPE       
+2192  SW_ADCVAL          21A0  SW_ADC_LOOP        2252  SW_ALARM           
+2261  SW_ALARM_LOOP      217A  SW_DEFAULT         217C  SW_END             
+21CD  SW_EXECUTE_RAM     2183  SW_MESSAGE         21EF  SW_NOTIMPL         
+2212  SW_QPPI_B          2216  SW_QPPI_CNT        2202  SW_QUERY_PPI       
+21B1  SW_READ_RAM        21D1  SW_RESET           21E7  SW_RESET_NOPE      
+218B  SW_SETPWM          227C  SW_SET_BEEP_P      223B  SW_WPPI_B          
+223F  SW_WPPI_CNT        21F7  SW_WRITE_DAC       222B  SW_WRITE_PPI       
+21BF  SW_WRITE_RAM       25CD  TEST_CODE          262A  TEST_RAM_DONE      
+261F  TEST_RAM_FAIL      25E0  TEST_RAM_LOOP_A    25ED  TEST_RAM_LOOP_B    
+25FF  TEST_RAM_LOOP_C    260C  TEST_RAM_LOOP_D    25BE  TEST_RAM_MSG       
+003A  TIME               000A  TIMER1             000C  TIMER2             
+0018  TIMER_COMMAND      FF5A  TIMER_COUNT        2283  TIMER_INT          
+229E  TIMER_INT_END      00A6  TIMER_NUM          004A  TIMER_OVF          
+0040  TIMETO             0005  TI_BIT             005A  TRAP_INT           
+005C  UNIMP_OP           22FF  VERSION_MSG        237C  WAIT_F             
+01D4  WAIT_MAX           2378  WAIT_MSEC          003C  WAIT_SECS          
+000A  WATCHDOG           262D  WORD_LOOPBACK      249D  WORD_SERIAL        
+23EB  WRITE_RAM          23F3  WRITE_RAM_LOOP     0030  W_TEMP             
+
+

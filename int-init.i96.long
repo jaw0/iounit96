@@ -1,0 +1,44 @@
+
+
+init_int_table:
+
+	ld		int_temp,#ad_complete
+	ld		int_temp2,#adc_int
+	st		int_temp2,[int_temp]
+
+	ld		int_temp,#soft_timer
+	ld		int_temp2,#timer_int
+	st		int_temp2,[int_temp]
+
+	ld		int_temp,#serial_io
+	ld		int_temp2,#serial_int
+	st		int_temp2,[int_temp]
+	
+	ld		int_temp,#timer_ovf
+	ld		int_temp2,#null_int
+	st		int_temp2,[int_temp]
+
+	ld		int_temp,#ext_int
+	ld		int_temp2,#null_int
+	st		int_temp2,[int_temp]
+
+	ld		int_temp,#trap_int
+	ld		int_temp2,#null_int
+	st		int_temp2,[int_temp]
+
+	ld		int_temp,#unimp_op
+	ld		int_temp2,#null_int
+	st		int_temp2,[int_temp]
+
+
+	ld		int_temp,#hsi_data
+	ld		int_temp2,#null_int
+	st		int_temp2,[int_temp]
+
+	ld		int_temp,#hso_sent
+	ld		int_temp2,#null_int
+	st		int_temp2,[int_temp]
+
+	ld		int_temp,#hsi_0_pin
+	ld		int_temp2,#null_int
+	st		int_temp2,[int_temp]

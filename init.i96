@@ -1,0 +1,65 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+.org $2000	; interupt vector table
+
+.word	 null_int	;_timer_ovf		; timer ov
+.word	adc_int		;_ad_complete		; done adc
+.word	 null_int	;_hsi_data		; hsi data available
+.word	 null_int	;_hso_sent		; hso
+.word	 null_int	;_hsi_0_pin		; hsi.0
+.word	timer_int	;_soft_timer		; software timer
+.word	serial_int	;_serial_io		; serial io
+.word	 null_int	;_ext_int		; ext int
+.word	 null_int	;_trap_int		; trap int
+.word	 null_int	;_unimp_op		; unimpl. opcode int
+
+
+.org		$2018
+ccr:	.byte	%11101101	; chip config reg
+				; limit to 3 wait states, 8bit bus
+
+.org $2080	; reset vectors us to here
+.proc
+reset:
+
+	di			; hold off on INTs  for now
+	ldb ioc0, #%00000000	; not enable HSIs, nor T2
+	ldb ioc1,  # B(sel_pwm) | B(sel_txd)
+	ldb imask, # B(int_sio) | B(int_timer)
+	ldb ipend,r0		; clear any pending ints
+	ldb spstat_image,r0
+	ldb char_flag,r0
+
+	clr_fifo$:		; clear out HSI FIFO
+		ld r0, hsi_time
+		skip
+		skip			; delay 8 state times
+		jbs ios1,7,clr_fifo$
+
+	; zero all lo-level regs and stack space
+	ld sp,#REG_START     		; start of lo-lev regs
+	reset_clram$:
+		st r0,[sp]+
+		cmp sp,#REG_LAST    	; end of internal ram
+		jlt reset_clram$
+
+	ld  sp,#$FE			; set up a *SMALL* stack
+	call init_serial
+	call init_ppi
+	call init_pit
+	;call init_int_table
+	;call init_display
+
+	ld timeto, timer1
+	add timeto, #timer_count
+		jbs ios0,6,$		; wait till CAM !full
+	nop
+	ldb hso_command, #timer_command
+	ld hsi_time, timeto		; start timer
+
+	ld rst_flag, #RST_WARM
+	ljmp main
+

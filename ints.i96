@@ -1,0 +1,45 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+; serial_int is in serial.i96
+
+
+timer_int:
+	pushf
+	add timeto, #timer_count
+		jbs ios0,6,$
+	nop
+	ldb hso_command, #timer_command
+	ld hso_time, timeto		; start timer again for next int
+
+	inc time		; update real time (in #time_count units)
+	addc time+2, r0
+	addc time+6, r0
+	ldb int_mask,#00	; in case we want to enable something
+	ei	
+
+	; do timer based stuff here
+
+	timer_int_end:
+	popf
+	ret
+;*********************
+
+null_int:	; nop int vectors
+	pushf
+	popf
+	ret
+;*********************
+
+adc_int:
+	pushf
+	ldb adc_value,ad_result
+	ldb adc_value,ad_result+1	; only want 8 msbs
+	ldb ad_command,#{{1<<adc_go}|4}	;start adc channel #4
+	popf
+	ret
+;*********************
+
+

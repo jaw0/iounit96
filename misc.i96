@@ -1,0 +1,139 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+message_string:	 .ascii "\r\ni96 Controller Unit\r\n"
+		 .ascii "Created by: Jeff Weisberg\r\n"
+		 .ascii "Fri May  8 21:55:36 EDT 1992\r\n"
+version_msg:	 .ascii "\r\nSoftware Version: A2.02\r\n"
+		 .asciz "Tue Dec 15 23:54:01 EST 1992\r\n"
+
+not_impl_mesg:	 .asciz "\r\nUnimplemented Function\r\n"
+init_mesg1:	 .asciz "\r\nHello, World\r\n"
+reset_msg:	 .asciz "\r\nWatchdog Reset\r\n"
+
+
+;*********************
+
+wait_msec:		; waits one msec
+		ld w_temp,#215
+		wait_f:
+			dec w_temp
+			jne wait_f
+		dec delay_time
+		jne wait_msec
+	ret
+;*********************
+
+init_message:
+	ld arg1,#init_mesg1
+	call mesg_serial
+	ret
+;*********************
+
+idle_loop:
+	ret
+	; disabled
+	push ax
+	ld ax, time+1
+	sub ax, spike
+	cmp ax, #wait_max
+	jlt idle_cont
+		ld arg1,#reset_msg
+		call mesg_serial
+		jmp reset
+	idle_cont:
+	pop ax
+	ret
+
+;*********************
+
+strncmp:
+	push arg1
+	push arg2
+	push arg3
+	push ax
+	strncmp_loop:
+		ldb  al,[arg1]+
+		cmpb al,[arg2]+
+		jne strncmp_nope
+			djnz arg3, strncmp_loop
+	ldb retval,r0
+	clrc
+	jmp strncmp_done
+	strncmp_nope:
+		ldb  retval,#1
+		setc
+	strncmp_done:
+	pop ax
+	pop arg3
+	pop arg2
+	pop arg1
+	ret
+;*********************
+
+read_ram:
+	push arg1	; adress
+	push arg2	; count
+	push ax
+	ld ax, arg1
+	add arg2, #$0100
+	read_ram_loop:
+			ldb arg1, [ax]+
+			call chout
+			djnz arg2, read_ram_loop
+		djnz arg2+1, read_ram_loop
+	pop ax
+	pop arg2
+	pop arg1
+	clrc
+	ret
+;**********************
+
+write_ram:
+	push arg1	; adress
+	push arg2	; count
+	add arg2, #$0100
+	write_ram_loop:
+			call chinput
+			stb retval, [arg1]+
+			djnz arg2, write_ram_loop
+		djnz arg2+1, write_ram_loop
+	pop arg2
+	pop arg1
+	clrc
+	ret
+;**********************
+
+get_adc:
+	push arg1
+	andb arg1,#$7
+	orb arg1,#{1<<adc_go}
+	ldb ad_command, arg1
+	get_adc_loop:
+		skip		; delay 8 state times
+		skip
+		jbs ad_result,3,get_adc_loop
+	ldb retval, ad_result	; must be read as 2 bytes
+	ldb retval+1,ad_result+1
+	shr retval, #6
+	pop arg1
+	ret
+
+
+do_beep:
+	push ax
+	push bx
+	ld ax, #PPI_A0
+	ldb bh, [ax]
+	orb bh,#01
+	stb bh, [ax]
+	ld delay_time,#250
+	call wait_msec
+	xorb bh, #01
+	stb bh, [ax]
+	pop bx
+	pop ax
+	ret
+

@@ -1,0 +1,207 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+.proc
+main:
+;	ld sp, #RAM_LAST - {RAM_LAST % 2}	; set up larger stack
+	ei
+	call init_message
+	ld beep_p, #$0040
+
+	main_wait_enq:	; simple handshake
+		;call chinput
+		;cmpb retval,#ENQ
+		;jne main_wait_enq
+	ldb arg1,#'>' ;#ACK
+	call chout
+	call chinput
+	andb retval, #0x7F
+	ldb arg1,retval
+	ldb ah,retval
+	call chout ; byte_serial ;
+
+	
+	; switch (char_in)
+
+; using: MPAWGDQXSabcLB CO
+		; this depends on smart jumps
+		; do not disable them!
+
+		cmpb ah,#nl
+			je main_wait_enq
+		cmpb ah,#cr
+			je main_wait_enq
+		cmpb ah,#'M'			; display startup message
+			je sw_message
+		cmpb ah,#'P'			; set pwm to <byte>
+			je sw_setpwm
+		cmpb ah,#'A'			; get adc value from channel <byte>
+			je sw_adcval
+		cmpb ah,#'R'			; read RAM from <word> for <count> bytes
+			je sw_read_ram
+		cmpb ah,#'W'			; write RAM from <word> for <count> bytes
+			je sw_write_ram
+		cmpb ah,#'G'			; execute at <word>
+			je sw_execute_ram
+		cmpb ah,#'D'			; write <byte to DAC
+			je sw_write_dac
+		cmpb ah,#'Q'			; read PPI <byte>
+			je sw_query_ppi
+		cmpb ah,#'X'			; reset
+			je sw_reset
+		cmpb ah,#'S'			; write <byte> to PPI <byte>
+			je sw_write_ppi
+		cmpb ah,#'a'
+			je word_loopback
+		cmpb ah,#'b'
+			je string_loopback
+		cmpb ah,#'c'
+			je test_code
+		cmpb ah,#'L'
+			je sw_alarm
+		cmpb ah,#'l'
+			je sw_alarm
+		cmpb ah,#'B'			; set beep period to <word>
+			je sw_set_beep_p
+			
+		cmpb ah,#'C'
+			;je sw_get_pit_count
+		cmpb ah,#'O'
+			;je sw_set_mode
+	
+		sw_default:
+			jmp sw_notimpl
+	sw_end:
+	ldb arg1,#EOT
+	call chout
+	jmp main_wait_enq
+	
+	;****************************
+	
+	
+	sw_message:
+		ld arg1,#message_string
+		call mesg_serial
+		jmp sw_end
+	
+	sw_setpwm:
+		call read_byte
+		stb retval,pwm_control
+		jmp sw_end
+	
+	sw_adcval:
+		call read_byte
+		ldb al, retval
+		andb al,#$7
+		orb al,#{1<<adc_go}
+		ldb ad_command, al
+		sw_adc_loop:
+			skip		; delay 8 state times
+			skip
+			jbs ad_result,3,sw_adc_loop
+		ldb r0, ad_result	; must be read as 2 bytes
+		ldb arg1,ad_result+1
+		call byte_serial
+		jmp sw_end
+	
+	sw_read_ram:
+		call read_word
+		ld arg1,retval	; adress
+		call read_word
+		ld arg2,retval	; count
+		call read_ram
+		jmp sw_end
+	
+	sw_write_ram:
+		call read_word
+		ld arg1,retval	; adress
+		call read_word
+		ld arg2,retval	; count
+		call write_ram
+		jmp sw_end
+	
+	sw_execute_ram:
+		call read_word
+		br [retval]
+	
+	sw_reset:
+		ld arg1,#RAM_START
+		ldb arg2, #8
+		call read_string
+		ld arg2, #pvnert_string
+		ldb arg3,#6
+		call strncmp
+		jnc reset
+		jmp sw_end
+	pvnert_string: .asciz "pvnert"
+
+	sw_notimpl:
+		ld arg1,#not_impl_mesg
+		call mesg_serial
+		jmp sw_end
+	
+	sw_write_dac:
+		ld ax, #DAC_A0
+		call read_byte	 ; get value
+		stb retval, [ax] ; write to DAC
+		jmp sw_end
+
+	sw_query_ppi:
+		call read_byte	; which PPI
+		ldb retval+1,r0	; zero extend
+		cmpb retval, #3
+			jgt sw_qppi_b
+			add retval, #PPI_A0
+			jmp sw_qppi_cnt
+		sw_qppi_b:
+			add retval, #PPI_B0-4
+		sw_qppi_cnt:
+		ld ax, retval
+		ld arg1,ax
+		call word_serial
+		ld arg1,#':'
+		call chout
+		ldb arg1, [ax]		; read PPI
+		call byte_serial	; send over serial
+		jmp sw_end
+
+	sw_write_ppi:
+		call read_byte	; which PPI
+		ldb retval+1,r0	; zero extend
+		cmpb retval, #3
+			jgt sw_wppi_b
+			add retval, #PPI_A0
+			jmp sw_wppi_cnt
+		sw_wppi_b:
+			add retval, #PPI_B0-4
+		sw_wppi_cnt:
+		ld ax, retval
+		ld arg1,ax
+		call word_serial
+		ld arg1,#':'
+		call read_byte		; get value
+		stb retval, [ax]	; write to PPI
+		jmp sw_end
+
+	sw_alarm:
+		ld ax, #PPI_A0
+		ld cx, #PPI_B0
+		ldb bh, [ax]
+		sw_alarm_loop:
+			ld delay_time, beep_p
+			call wait_msec
+			xorb bh, #01
+			stb bh, [ax]
+			ldb bl, [cx]		; test button
+			andb bl, #01
+			jne sw_alarm_loop
+		andb bh, #$FE
+		stb bh, [ax]			; turn it off
+		jmp sw_end
+
+	sw_set_beep_p:
+		call read_word
+		ld beep_p, retval
+		jmp sw_end

@@ -1,0 +1,103 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+;; 	define registers
+r0 		equ	0x00
+ad_result 	equ	0x02
+ad_command 	equ	0x02
+hsi_mode 	equ	0x03
+hsi_time 	equ	0x04
+hso_time 	equ	0x04
+hso_command 	equ	0x06
+hsi_status 	equ	0x06
+sbuf 		equ	0x07
+int_mask 	equ	0x08
+int_pending 	equ	0x09
+watchdog 	equ	0x0a
+timer1 		equ	0x0a
+timer2 		equ	0x0c
+baud_rate 	equ	0x0e
+ioport0 	equ	0x0e
+ioport1 	equ	0x0f
+ioport2 	equ	0x10
+sp_stat 	equ	0x11
+sp_con 		equ	0x11
+ios0 		equ	0x15
+ioc0 		equ	0x15
+ios1 		equ	0x16
+ioc1 		equ	0x16
+pwm_control 	equ	0x17
+sp 		equ	0x18
+
+	; some short hand notations for	the above
+ipend 		equ	0x09
+imask 		equ	0x08
+port0 		equ	0x0e
+port1 		equ	0x0f
+port2 		equ	0x10
+
+
+.org $1a		; the registers we will be using
+
+ax: 		.skip 2	; general purpose 16 bit registers
+bx: 		.skip 2 ; named after those in 80x86 why?)
+cx: 		.skip 2
+dx: 		.skip 2
+ex: 		.skip 2
+si: 		.skip 2
+; di is reserved (disable ints)
+
+al 		equ ax	; shorthand notation
+ah 		equ al + 1
+bl 		equ bx
+bh 		equ bl + 1
+cl 		equ cx
+ch 		equ cl + 1
+dl 		equ dx
+dh 		equ dl + 1
+foo 		equ ax
+bar 		equ bx
+baz 		equ cx
+fee 		equ dx
+fie 		equ ex
+foe 		equ si
+
+;	we are passing fnc args in registers
+arg1:		.skip 2	; input args to functions
+arg2: 		.skip 2
+arg3:		.skip 2
+retval:		.skip 2	; return val from functions
+
+
+delay_time: 	.skip 2	; delay time in msec for wait_msec
+w_temp:		.skip 2	; used by wait_msec
+beep_p: 	.skip 2
+lcd_disp:		; address of lcd display reg
+lcd_cntl: 		; address of lcd control reg
+lcd_mesg: 		; pointer to text to display
+lcd_foo: 		; used by lcd fncs
+lcd_char: 		; used by lcd fncs
+	; LCD is currently unimplented
+	; so we don't need to reserve any space for it
+
+rst_flag: 	.skip 2	; to detect warm reset
+char_in: 	.skip 2	; input char
+spike: 		.skip 2	; watchdog counter
+time:		.skip 6	; store elapsed time
+timeto:		.skip 2	; time for interupt
+int_temp: 	.skip 2	; tmp for int. handler
+int_temp2: 	.skip 2
+sp_qi_head: 	.skip 2 ; for serial input Q
+sp_qi_tail: 	.skip 2
+
+char_flag: 	.skip 1	; serial i/o flags
+adc_value: 	.skip 1	; most recent adc result
+last_c:		.skip 1	; most recent value xmitted
+spstat_image: 	.skip 1	; used by serial int
+sp_qi_len: 	.skip 1	; to implement incoming serial queue
+sp_qi_stat: 	.skip 1	; status of XON/XOFF
+sp_queuei: 	.skip 32 ; 16 byte incoming queue
+
+

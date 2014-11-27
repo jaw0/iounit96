@@ -1,0 +1,68 @@
+
+
+void chout(char)		output char to serial port
+
+char chinput(void)		get a char from serial port
+
+void mesg_serial(char *)	output asciz string
+
+void byte_serial(byte)		output byte as ascii
+
+void word_serial(word)		output word as ascii
+
+byte read_byte(void)		return byte from ascii input
+
+word read_word(void)		return word from ascii input
+
+word read_string(char *, byte)	read string upto max length or <cr>, return length
+
+imask/ipend bits: [extint|serial|timers|hsi_0|hso|hsi|adc|timer_ov]
+psw:	[z|n|v|vt|c|-|i|st|<imask>]
+	z = zero
+	n = negative
+	v = overflow
+	vt = overfloe trap
+	c = carry
+	st = sticky
+	i = global interupt enable
+
+ioc0:	[
+		t2 clk src = hsi.1 / t2clk'
+		hsi.3 enable
+		t2 reset src = hsi.0 / t2rst'
+		hsi.2 enable
+		t2 ext reset enable
+		hsi.1 enable
+		t2 reset each write
+		hsi.0 enable
+	]
+ioc1:	[
+		hsi int = full/loaded'
+		hso.5 enable
+		txd / p2.0'
+		hso.4 enable
+		t2 ov int enable
+		t1 ov int enable
+		extint src = ach7 / extint'
+		pwm / p2.5'
+	]
+ios0:	[
+		hso hold reg. full
+		cam or hold reg full
+		hso.5
+		hso.4
+		hso.3
+		hso.2
+		hso.1
+		hso.0
+	]
+ios1:	[
+		hsi hold reg. data available
+		hsi fifo full
+		t1 ov
+		t2 ov
+		soft t3
+		soft t2
+		soft t1
+		soft t0
+	]

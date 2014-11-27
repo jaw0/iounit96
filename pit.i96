@@ -1,0 +1,26 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+init_pit:
+ldb al, #%00110110
+ld  si, #PIT_AC
+stb al, [si]
+addb al, #%01000000
+stb al, [si]
+addb al, #%01000000
+stb al, [si]
+addb al, #%01000000
+
+ld si,#PIT_A0
+stb r0, [si]
+stb r0, [si]
+ld si,#PIT_A1
+stb r0, [si]
+stb r0, [si]
+ld si,#PIT_A2
+stb r0, [si]
+stb r0, [si]
+
+ret

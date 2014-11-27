@@ -1,0 +1,14 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+init_ppi:
+	ld  ax, #PPI_AC
+	ldb bl, #%10000000	; all outputs
+	stb bl, [ax]
+	ldb bl, #%10011011	; all inputs
+	ld  ax, #PPI_BC
+	stb bl, [ax]
+
+	ret

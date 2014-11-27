@@ -1,0 +1,66 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+; adapted from Peter ur-mmr
+
+_timer_ovf:
+	pushf
+	ld		int_temp,#timer_ovf
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+
+_ad_complete:
+	pushf
+	ld		int_temp,#ad_complete
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+
+_hsi_data:
+	pushf
+	ld		int_temp,#hsi_data
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+
+_hso_sent:
+	pushf
+	ld		int_temp,#hso_sent
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+_hsi_0_pin:
+	pushf
+	ld		int_temp,#hsi_0_pin
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+
+_soft_timer:
+	pushf
+	ld		int_temp,#soft_timer
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+
+_serial_io:
+	pushf
+	jmp serial_int
+
+	ld		int_temp,#serial_io
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+
+_ext_int:
+	pushf
+	ld		int_temp,#ext_int
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+
+_trap_int:
+	pushf
+	ld		int_temp,#trap_int
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]
+
+_unimp_op:
+	pushf
+	ld		int_temp,#unimp_op
+	ld		int_temp2,[int_temp]
+	br		[int_temp2]

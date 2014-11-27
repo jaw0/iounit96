@@ -1,0 +1,25 @@
+
+; 80196 io device
+; Jeff Weisberg
+
+; titl "IO-Unit Code; -jaw"
+	; Sun Sep 13 14:24:42 EDT 1992
+	; Sun Jun  6 13:32:22 EDT 1993
+
+
+#include "defines.i96"	;
+#include "register.i96"	;
+#include "init.i96"		; these ***MUST*** be first
+#include "main.i96"
+			; the rest order is irrelevant
+#include "ints.i96"
+#include "misc.i96"
+#include "serial.i96"
+; #include "lcd.i96"
+#include "ppi.i96"
+#include "pit.i96"
+#include "test.i96"
+
+.symtab "symtab"
+
+

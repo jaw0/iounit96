@@ -1,0 +1,80 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+init_display:		; initilize the display unit
+ld lcd_disp,#$1701
+ld lcd_cntl,#$1700
+ldb lcd_foo,#00111000b
+stb lcd_foo,[lcd_cntl]	; init the display
+ld delay_time,#5
+call wait_msec
+stb lcd_foo,[lcd_cntl]
+ld delay_time,#5
+call wait_msec
+stb lcd_foo,[lcd_cntl]	; the book says do it 3 times...
+ld delay_time,#5
+call wait_msec		 
+ldb lcd_foo,#00001110b
+stb lcd_foo,[lcd_cntl]	; turn display on
+ld delay_time,#2
+call wait_msec
+call display_clear
+ld delay_time,#2
+call wait_msec
+ldb lcd_foo,#00000110b
+stb lcd_foo,[lcd_cntl]	; set cursor mode
+ld delay_time,#2
+call wait_msec			; display init message
+ret
+;*********************
+
+
+	; misc. display handling routines 
+
+display_clear:
+ldb lcd_foo,[lcd_cntl]
+jbs lcd_foo,7,display_clear	; test until !busy
+ldb lcd_foo,#1b
+stb lcd_foo,[lcd_cntl]
+ret
+;*********************
+
+cursor_home:
+ldb lcd_foo,[lcd_cntl]
+jbs lcd_foo,7,cursor_home	; test until !busy
+ldb lcd_foo,#10b
+stb lcd_foo,[lcd_cntl]
+ret
+dfb "there are 1e54 (a constant) H atoms in every white dwarf"
+;*********************
+
+cursor_top:
+ldb lcd_foo,[lcd_cntl]
+jbs lcd_foo,7,cursor_top	; test until !busy
+ldb lcd_foo,#$80
+stb lcd_foo,[lcd_cntl]		; cursor to row 1
+ret
+;*********************
+
+cursor_bottom:
+ldb lcd_foo,[lcd_cntl]
+jbs lcd_foo,7,cursor_bottom	; test until !busy
+ldb lcd_foo,#$C0
+stb lcd_foo,[lcd_cntl]		; cursor to row 2
+;*********************
+ret
+
+disp_mesg:			; at current cusor position
+ldb lcd_char,[lcd_mesg]+
+cmpb lcd_char,r0
+je disp_mesg_done
+disp_wait_loop:
+ldb lcd_foo,[lcd_cntl]
+jbs lcd_foo,7,disp_wait_loop	; test until !busy
+stb lcd_char,[lcd_disp]
+jmp disp_mesg
+disp_mesg_done:
+ret
+;*********************

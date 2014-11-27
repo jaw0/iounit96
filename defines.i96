@@ -1,0 +1,85 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+
+MHz		equ 8		; CPU speed
+int_time	equ 500		; usec per timer int
+wait_secs	equ 60		; sec before abort in chinput
+pi		equ 314159	; pi * 100000
+timer_command	equ %00011000	; hso start timer command
+
+timer_num	equ (MHz * int_time)/(3 * 8) 
+				; value for timer count
+				; 8095 is 3 osc / state time (196 is 2)
+timer_count	equ -timer_num	
+wait_max	equ ( wait_secs*1000000/(int_time * 256) )
+RST_WARM	equ $1234	; warm reset flag
+
+#define B(x)	(1<< (x))
+
+; define adresses of devices
+
+PPI_A0		equ $1000
+PPI_A1		equ $1001
+PPI_A2		equ $1002
+PPI_AC		equ $1003
+
+PPI_B0		equ $1100
+PPI_B1		equ $1101
+PPI_B2		equ $1102
+PPI_BC		equ $1103
+
+PIT_A0		equ $1200
+PIT_A1		equ $1201
+PIT_A2		equ $1202
+PIT_AC		equ $1203
+
+;		equ $1300	; future expansion
+;		equ $1400	; ditto
+
+DAC_A0		equ $1500
+;		equ $1600	; fut. exp. (ADC)
+LCD_A0		equ $1700
+
+REG_START	equ $001A
+REG_LAST	equ $00FF
+ROM_START	equ $2000
+ROM_LAST	equ $3FFF
+RAM_START	equ $E000
+RAM_LAST	equ $FFFF
+
+
+	; define various bits
+RI_BIT		equ	6
+TI_BIT		equ	5
+adc_go		equ 	3
+sel_txd		equ 	5
+sel_pwm		equ 	0
+
+int_sio		equ	6
+int_adc		equ	1
+int_timer	equ	5
+int_extint	equ	7
+int_hsi		equ	2
+int_hso		equ	3
+cflg_gotit	equ 	0
+cflg_ov		equ	1
+
+	; ascii cntl chars
+nul		equ 0
+null		equ 0
+
+EOT		equ 4
+eot		equ EOT
+enq		equ 5
+ack		equ 6
+bel		equ 7
+NL		equ $A
+CR		equ $D
+cr		equ CR
+nl		equ NL
+esc		equ $1B
+xon		equ 17
+xoff		equ 19

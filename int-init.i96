@@ -1,0 +1,30 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+org $ + { $%2}
+
+int_decl_start:
+	dwl	null_int	; timer_ovf
+	dwl	adc_int		; adc done
+	dwl	null_int	; hsi_data
+	dwl	null_int	; hso_sent
+	dwl	null_int	; hsi_0
+	dwl	timer_int	; soft timer
+	dwl	serial_int	; serial int
+	dwl	null_int	; ext int
+	dwl 	null_int	; trap
+	dwl	null_int	; unimpl opcode
+int_decl_end:
+
+init_int_table:
+
+	ld ax, #int_vector_start
+	ld bx, #int_decl_start
+	int_ldtab_loop:
+		ld cx, [bx]+
+		st cx, [ax]+
+		cmp bx, #int_decl_end
+		jne int_ldtab_loop
+	ret

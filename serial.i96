@@ -1,0 +1,217 @@
+
+; 80196 io device
+; Jeff Weisberg
+; May 1992
+
+putchar:
+chout:			; outputs a char
+		nop
+		nop
+		jbc spstat_image,TI_BIT,chout
+	ldb last_c,arg1
+	andb spstat_image,#{~{1<<TI_BIT}}	; clear TI flag
+	ldb sbuf,arg1
+	ret
+;*********************
+
+getchar:
+chinput:
+	; now using xon/xoff protocol 12/15/92 
+
+	push ax
+	ld spike, time+1
+	chin_loop:
+		call idle_loop
+		nop
+		nop
+		cmpb sp_qi_len, r0
+		je chin_loop
+	add ax, sp_qi_tail, #sp_queuei
+	ldb retval, [ax]
+	inc sp_qi_tail
+	and sp_qi_tail, #$1F	; tail %= 32
+	decb sp_qi_len
+	cmpb sp_qi_stat, #xoff
+	je chin_ok
+		cmpb sp_qi_len, #$8
+		jgt chin_ok
+			ldb sbuf, #xon
+			ldb sp_qi_stat, #xon
+	chin_ok:
+	pop ax
+	ret
+
+
+;	ld spike, time+1
+;	chin_loop:
+;		call idle_loop
+;		nop
+;		nop
+;		jbc char_flag,cflg_gotit,chin_loop
+;	andb char_flag,#{~{1<<cflg_gotit}}
+;	ldb retval,char_in
+;	ret
+;*********************
+
+puts:
+mesg_serial:
+	push arg1
+	push ax
+	ld ax,arg1
+	mesg_serial_loop:
+		ldb arg1,[ax]+
+		cmpb arg1,r0
+		je mesg_serial_done
+			call chout
+			jmp mesg_serial_loop
+	mesg_serial_done:
+	pop ax
+	pop arg1
+	ret
+;*********************
+
+byte_serial:
+	push arg1
+	shrb arg1,#4
+	andb arg1,#$F
+	cmpb arg1,#$A
+	jlt byte_ser_cont2
+		addb arg1,#7
+	byte_ser_cont2:
+	addb arg1,#$30
+	call chout		; msnibble
+	pop arg1
+	push arg1
+	andb arg1,#$F
+	cmpb arg1,#$A
+	jlt byte_ser_cont1
+		addb arg1,#7
+	byte_ser_cont1:
+	addb arg1,#$30
+	call chout		; lsnibble
+	pop arg1
+	ret
+;*********************
+
+word_serial:
+	push arg1
+	ldb arg1, arg1+1	; msb
+	call byte_serial
+	pop arg1
+	push arg1		; lsb
+	call byte_serial
+	pop arg1
+	ret
+;*********************
+read_byte:
+	push ax
+	call chinput		; msnibble
+	andb retval, #$7F
+	subb retval, #$30
+	cmpb retval, #$A
+	jlt read_byte_cont1
+		subb retval, #$7
+	read_byte_cont1:
+	andb retval, #$F
+	shlb retval, #$4
+	ldb al,retval
+	call chinput		; lsnibble
+	andb retval, #$7F
+	subb retval, #$30
+	cmpb retval, #$A
+	jlt read_byte_cont2
+		subb retval, #$7
+	read_byte_cont2:
+	andb retval, #$F
+	orb retval, al
+	pop ax
+	clrc
+	ret
+;**********************
+read_word:
+	push ax
+	call read_byte		; msb
+	ldb al, retval
+	call read_byte		; lsb
+	ldb retval,retval
+	ldb retval+1,al
+	pop ax
+	ret
+;************************
+
+gets:
+read_string:
+	push arg1	; ptr to buffer
+	push arg2	; max length
+	read_string_loop:
+		call chinput
+		stb retval,[arg1]+
+		cmpb retval, #NL	; upto newline
+		je read_string_done
+		cmpb retval, #CR	; or return
+		je read_string_done
+			djnz arg2, read_string_loop
+	read_string_done:
+	stb r0, [arg1]	; put a null @ end 
+	ld retval, arg2
+	pop arg2
+	pop arg1
+	subb retval, arg2, retval
+	ret
+;*************************
+
+
+init_serial:		; initilize the serial port
+	ldb baud_rate,#$34
+	ldb baud_rate,#$80	; 2400 baud
+	ldb sp_con,#%00001001	; enable receive, mode 01
+	ldb r0,sp_stat		; clear stat
+	ldb r0,sbuf		
+	ldb sbuf, #xon
+	ld delay_time,#800	; wait for uart to init
+	ldb spstat_image,#{1<<TI_BIT}
+	call wait_msec
+	ldb sp_qi_len, r0
+	ldb sp_qi_stat, #xon
+	ld sp_qi_head, r0
+	ld sp_qi_tail, r0
+	ret
+;*********************
+
+serial_int:
+	pushf
+	push ax
+	orb spstat_image,sp_stat
+	jbc spstat_image,TI_BIT,serial_not_ti
+		; we have an xmit int
+
+	serial_not_ti:
+	jbc spstat_image,RI_BIT,serial_done
+		; we have an rcv int
+
+		ldb char_in,sbuf
+		andb spstat_image,#{~{1<<RI_BIT}}
+		; jbc  char_flag,cflg_gotit,serial_gotit_ok
+		;	orb  char_flag,#{1<<cflg_ov}	; oops--overflow
+		; serial_gotit_ok:
+		; orb  char_flag,#{1<<cflg_gotit}
+		; queue it up
+		cmpb sp_qi_len, #$1F	; Q full
+		je serial_done
+			add ax, sp_qi_head, #sp_queuei
+			stb char_in, [ax]
+			inc sp_qi_head
+			and sp_qi_head, #$1F	; head %= 32
+			incb sp_qi_len
+			cmpb sp_qi_len, #$10
+			jlt ser_rcv_ok
+				; Q almost full
+				ldb sp_qi_stat, #xoff
+				ldb sbuf, #xoff
+			ser_rcv_ok:
+
+	serial_done:
+	pop ax
+	popf
+	ret
+;*********************
